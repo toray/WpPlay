@@ -14,17 +14,22 @@ public class PayTools {
 	static String goodsName = "测试商品";
 	// 支付金额
 	static float price = 0.0f;
-	// 支付时间
-	static String time = "";
 	// 支付描述
 	static String goodsDesc = "";
 	// 应用或游戏商服务器端回调接口（无服务器可不填写）
 	static String notifyUrl = "";
 	static Context mContext;
+	static String APP_ID;
+	static String APP_PID;
 
-	public static void Pay(float number, Context context) {
+	public static void init(String appid, String app_pid) {
+		APP_ID = appid;
+		APP_PID = app_pid;
+	}
+
+	public static void Pay(float number, Context context, final PayCallBack palycallback) {
 		// 初始化统计器(必须调用)
-		PayConnect.getInstance("d275369741d9d5afbca9af87e9a3c143", "WAPS", context);
+		PayConnect.getInstance(APP_ID, APP_PID, context);
 
 		mContext = context;
 		goodsDesc = "购买" + goodsName;
@@ -43,35 +48,30 @@ public class PayTools {
 			}
 
 			PayConnect.getInstance(context).pay(context, orderId, userId, price, goodsName, goodsDesc, notifyUrl,
-					new MyPayResultListener());
+					new PayResultListener() {
+
+						@Override
+						public void onPayFinish(Context payViewContext, String orderId, int resultCode,
+								String resultString, int payType, float amount, String goodsName) {
+							if (resultCode == 0) {
+								PayConnect.getInstance(mContext).closePayView(payViewContext);
+								PayConnect.getInstance(mContext).confirm(orderId, payType);
+								palycallback.onSuccess();
+							} else {
+								palycallback.onError();
+							}
+						}
+					});
 
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static class MyPayResultListener implements PayResultListener {
-
-		@Override
-		public void onPayFinish(Context payViewContext, String orderId, int resultCode, String resultString,
-				int payType, float amount, String goodsName) {
-			// 可根据resultCode自行判断
-			if (resultCode == 0) {
-				// 支付成功时关闭当前支付界面
-				PayConnect.getInstance(mContext).closePayView(payViewContext);
-
-				// TODO 在客户端处理支付成功的操作
-
-				// 未指定notifyUrl的情况下，交易成功后，必须发送回执
-				PayConnect.getInstance(mContext).confirm(orderId, payType);
-			} else {
-
-			}
-		}
-	}
-	public interface PayCallBack{
+	public interface PayCallBack {
 		public void onSuccess();
+
 		public void onError();
 	}
-	
+
 }
